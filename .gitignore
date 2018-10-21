@@ -1,0 +1,16 @@
+*.iml
+
+.idea
+.idea/
+
+/out/
+
+.idea_modules/
+node_modules/
+
+app/*.log
+
+.DS_Store
+
+tmp/
+dist/
