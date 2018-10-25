@@ -102,7 +102,7 @@ function encodeLength(l) {
 /**
  *
  * @param {Uint8Array} buffer
- * @return {{length: number, lengthByteSize: number}}
+ * @return {{code: number, length: number, lengthByteSize: number}}
  */
 function decodeLength(buffer) {
     let la = new Uint8Array(8);
@@ -116,8 +116,8 @@ function decodeLength(buffer) {
         }
     }
     if (lengthByteSize === 0 || lengthByteSize > 4) {
-        console.log("lengthByteSize: ", lengthByteSize);
-        throw new Error("invalid length buf");
+        console.log("wrong lengthByteSize: ", lengthByteSize);
+        return { code: 1, length: 0, lengthByteSize: 0 }
     }
 
     let length = 0;
@@ -127,6 +127,7 @@ function decodeLength(buffer) {
     }
 
     return {
+        code: 0,
         length: length,
         lengthByteSize: lengthByteSize
     };
@@ -184,7 +185,7 @@ function bufferToHex(buffer) {
     return hex
 }
 
-function concatenate(resultConstructor, ...arrays) {
+function concatenateBuffer(resultConstructor, ...arrays) {
     let totalLength = 0;
     for (const arr of arrays) {
         totalLength += arr.length;
@@ -197,6 +198,11 @@ function concatenate(resultConstructor, ...arrays) {
     }
     return result;
 }
+
+const UNPACK_RESULT_CODE_EMPTY_BUF = 1;
+const UNPACK_RESULT_CODE_DECODE_LENGTH_FAIL = -1;
+const UNPACK_RESULT_CODE_BUF_NOT_ENOUGH = -2;
+const UNPACK_RESULT_CODE_WRONG_KEY_SIZE = -3;
 
 class KV {
     constructor(key, value) {
@@ -241,21 +247,30 @@ class KV {
     /**
      *
      * @param {Uint8Array} buffer
-     * @return {{kv: KV, pendingParseBuffer: Uint8Array}}
+     * @return {{code: number, kv: KV, pendingParseBuffer: Uint8Array}}
      */
     static unpack(buffer) {
+        if (!buffer || buffer.length === 0) {
+            return { code: UNPACK_RESULT_CODE_EMPTY_BUF, kv: null, pendingParseBuffer: buffer };
+        }
+
         let dlr = decodeLength(buffer);
+        if (dlr.code !== 0) {
+            return { code: UNPACK_RESULT_CODE_DECODE_LENGTH_FAIL, kv: null, pendingParseBuffer: null };
+        }
+
         let payloadLength = dlr.length;
 
         let remainingLength = buffer.length - dlr.lengthByteSize - payloadLength;
         if (remainingLength < 0 || (buffer.length - dlr.lengthByteSize) < 0) {
-            throw new Error("buffer not enough");
+            return { code: UNPACK_RESULT_CODE_BUF_NOT_ENOUGH, kv: null, pendingParseBuffer: buffer };
         }
 
         let payload = buffer.slice(dlr.lengthByteSize, dlr.lengthByteSize + dlr.length);
         if (payload.length === 0) {
-            throw new Error("empty payload");
+            return { code: UNPACK_RESULT_CODE_BUF_NOT_ENOUGH, kv: null, pendingParseBuffer: buffer };
         }
+
         let isStringKey = false;
         let keySizeByte = payload[0];
         let keyLength = keySizeByte & 0x7F;
@@ -265,7 +280,7 @@ class KV {
 
         let valueLength = payload.length - 1 - keyLength;
         if (valueLength <= 0) {
-            throw new Error("wrong key length")
+            return { code: UNPACK_RESULT_CODE_WRONG_KEY_SIZE, kv: null, pendingParseBuffer: buffer };
         }
 
         let keyBuffer = payload.slice(1, 1 + keyLength);
@@ -274,6 +289,7 @@ class KV {
         let kv = new KV(key, valueBuffer);
 
         return {
+            code: 0,
             kv: kv,
             pendingParseBuffer: buffer.slice(dlr.lengthByteSize + dlr.length)
         }
@@ -312,6 +328,10 @@ class KV {
     }
 }
 
+/**
+ * @export
+ * @class BKV
+ */
 class BKV {
     constructor() {
         this._kvs = [];
@@ -328,7 +348,7 @@ class BKV {
 
         let buffer = new Uint8Array(0);
         this._kvs.forEach(kv => {
-            buffer = concatenate(Uint8Array, buffer, kv.pack())
+            buffer = concatenateBuffer(Uint8Array, buffer, kv.pack())
         });
 
         return buffer;
@@ -336,27 +356,26 @@ class BKV {
 
     /**
      * @param {Uint8Array} buffer
-     * @return {BKV}
+     * @return {{code: number, bkv: BKV, pendingParseBuffer: Uint8Array}}
      */
     static unpack(buffer) {
         let bkv = new BKV();
-        if (!buffer || buffer.length === 0) {
-            return bkv
-        }
         while (true) {
-            try {
-                let pr = KV.unpack(buffer);
-                bkv.add(pr.kv);
-                buffer = pr.pendingParseBuffer;
-                if (buffer.length === 0) {
-                    break;
+            let pr = KV.unpack(buffer);
+            if (pr.code === 0) {
+                if (pr.kv != null) {
+                    bkv.add(pr.kv);
                 }
-            } catch (e) {
-                console.log("parse fail: ", e);
-                break;
+                buffer = pr.pendingParseBuffer;
+            } else {
+                if (pr.code === UNPACK_RESULT_CODE_EMPTY_BUF) {
+                    break;
+                } else {
+                    return { code: pr.code, bkv: null, pendingParseBuffer: pr.pendingParseBuffer }
+                }
             }
         }
-        return bkv;
+        return { code: 0, bkv: bkv, pendingParseBuffer: null };
     }
 
     items() {
@@ -424,7 +443,9 @@ class BKV {
 }
 
 module.exports = {
-    bkv: BKV,
-    kv: KV,
+    BKV: BKV,
+    KV: KV,
     bufferToHex: bufferToHex,
+    hexToBuffer: hexToBuffer,
+    concatenateBuffer: concatenateBuffer,
 };
