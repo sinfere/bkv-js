@@ -2,19 +2,24 @@ const frame = require("./frame");
 const bkv = require("./bkv");
 
 let b = new bkv.BKV();
-b.addByStringKey("version", 1);
+b.addByStringKey("type", 1);
+b.addByStringKey("ssid", "");
+b.addByStringKey("password", "1");
 let buffer = frame.pack(b);
+console.log(buffer.length);
 console.log(bkv.bufferToHex(buffer));
 
 /**
  * @param {BKV} b
  */
 function parseOutFrame(b) {
+    console.log('parse out');
+    console.log("")
 }
 
 frame.setParseOutFrameCallback(parseOutFrame);
 
-let b1 = "ff0b97098776657273696f6e01";
+let b1 = "ff19bf068474797065010584737369640a8870617373776f726431";
 let b2 = "ff0b97098776";
 let b3 = "657273696f6e01";
 

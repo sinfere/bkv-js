@@ -279,7 +279,7 @@ class KV {
         }
 
         let valueLength = payload.length - 1 - keyLength;
-        if (valueLength <= 0) {
+        if (valueLength < 0) {
             return { code: UNPACK_RESULT_CODE_WRONG_KEY_SIZE, kv: null, pendingParseBuffer: buffer };
         }
 

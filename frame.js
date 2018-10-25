@@ -51,7 +51,7 @@ function parse(buffer) {
             } break;
 
             case ParseResultInvalid: {
-                buf = buf.substring(2);
+                buf = buf.slice(1);
             } break;
 
             case ParseResultFatal: {
@@ -109,6 +109,7 @@ function runParser(buffer) {
     if (bkr.code === 0) {
         return { result: ParseResultOk, pendingParseBuf: bkr.pendingParseBuffer, frame: bkr.bkv }
     } else {
+        console.log("bkv parse fail", bkr);
         return { result: ParseResultInvalid, pendingParseBuf: bkr.pendingParseBuffer, frame: bkr.bkv }
     }
 }
