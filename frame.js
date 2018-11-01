@@ -48,14 +48,14 @@ function parse(buffer) {
             case ParseResultIncompleteFrame: {
                 remainingBuf = pendingParseBuf;
                 return;
-            } break;
+            }
 
             case ParseResultInvalid: {
                 buf = buf.slice(1);
             } break;
 
             case ParseResultFatal: {
-                buf = '';
+                buf = new Uint8Array(0);
             } break;
 
             case ParseResultOk: {
@@ -102,7 +102,7 @@ function runParser(buffer) {
     let checkSum = calculateChecksum(frameBuffer.slice(3, length + 2));
     if (checkSum !== frameBuffer[2]) {
         console.log('parser', 'checksum not match');
-        return { result: ParseResultInvalid, pendingParseBuf: null, frame: null }
+        return { result: ParseResultInvalid, pendingParseBuf: buffer, frame: null }
     }
 
     let bkr = bkv.BKV.unpack(frameBuffer.slice(3, length + 2));

@@ -22,10 +22,12 @@ frame.setParseOutFrameCallback(parseOutFrame);
 let b1 = "ff19bf068474797065010584737369640a8870617373776f726431";
 let b2 = "ff0b97098776";
 let b3 = "657273696f6e01";
+let b5 = "FF152C068474797065010C89636F6E6E5F737461740081";
 
 frame.parse(bkv.hexToBuffer(b1));
 frame.parse(bkv.hexToBuffer(b2));
 frame.parse(bkv.hexToBuffer(b3));
+frame.parse(bkv.hexToBuffer(b5));
 
 
 
