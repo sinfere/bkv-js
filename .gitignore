@@ -14,3 +14,5 @@ app/*.log
 
 tmp/
 dist/
+
+frame_test_id_photo.js

@@ -42,19 +42,27 @@ function ensureBuffer(v) {
 
 /**
  *
- * @param v
+ * @param {number} v
  * @returns {Uint8Array}
  */
 function encodeNumber(v) {
-    let b = new Uint8Array(8);
-    let i = 0;
-    while (v > 0) {
-        b[i] = v & 0xFF;
-        v >>= 8;
-        i++;
+    if (v === 0) {
+        let b = new Uint8Array(1);
+        b[0] = 0;
+        return b
     }
 
-    return b.slice(0, i).reverse();
+    let b = new Uint8Array(8);
+    let dv = new DataView(b.buffer);
+    dv.setBigUint64(0, BigInt(v));
+    let i = 0;
+    for (; i < 8; i++) {
+        if (b[i] !== 0) {
+            break;
+        }
+    }
+
+    return b.slice(i);
 }
 
 /**
@@ -63,7 +71,7 @@ function encodeNumber(v) {
  */
 function decodeNumber(v) {
     let n = 0;
-    if (v.length > 8){
+    if (v.length > 8) {
         v = v.slice(0, 8);
     }
 
